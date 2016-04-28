@@ -15,12 +15,21 @@ app.get('/', function (req, res){
 
 // GET /todos
 app.get('/todos', function (req, res) {
-	res.json(todos);
+	var queryParams = req.query; // stores the data queried by the user after the "?"" in the URL
+	var filteredTodos = todos;
+	
+	if (queryParams.hasOwnProperty('completed') && queryParams.completed === 'true') {
+		filteredTodos = _.where(filteredTodos, {completed: true});
+	} else if (queryParams.hasOwnProperty('completed') && queryParams.completed === 'false') {
+		filteredTodos = _.where(filteredTodos, {completed: false});
+	}
+
+	res.json(filteredTodos);
 });
 
 // GET /todos/:id
 app.get('/todos/:id', function (req, res){
-	var todoId = parseInt(req.params.id, 10);
+	var todoId = parseInt(req.params.id, 10); // req.params contains route parameters in the path part of the URL
 	var matchedTodo = _.findWhere(todos, {id: todoId});
 	
 	if (matchedTodo){
