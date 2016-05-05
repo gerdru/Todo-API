@@ -16,7 +16,6 @@ var Todo = sequelize.define('todo', {
 		type: Sequelize.BOOLEAN,
 		allowNull: false,
 		defaultValue: false
-
 	}
 })
 
