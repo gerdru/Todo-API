@@ -46,7 +46,6 @@ app.get('/todos', function(req, res) {
 app.get('/todos/:id', function(req, res) {
 	var todoId = parseInt(req.params.id, 10); // req.params contains route parameters in the path part of the URL
 	db.todo.findById(todoId).then(function(todo) {
-		//res.status(200).send(todo.toJSON());
 		if (!!todo) {
 			res.json(todo.toJSON());
 		} else {
@@ -81,19 +80,22 @@ app.post('/todos', function(req, res) {
 
 app.delete('/todos/:id', function(req, res) {
 	var todoId = parseInt(req.params.id, 10);
-	var matchedTodo = _.findWhere(todos, {
-		id: todoId
-	});
-	console.log(matchedTodo);
 
-	if (matchedTodo) {
-		todos = _.without(todos, matchedTodo);
-		res.json(matchedTodo);
-	} else {
-		res.status(404).json({
-			"error": "no todo found with that id"
-		});
-	}
+	db.todo.destroy({
+		where: {
+			id: todoId
+		}
+	}).then(function(rowsDeleted) {
+		if (rowsDeleted === 0) {
+			res.status(404).json({
+				error: "no todo found with that id"
+			});
+		} else {
+			res.status(204).send();
+		}
+	}, function() {
+		res.status(500).send();
+	});
 });
 
 // PUT /todos/:id
@@ -127,7 +129,6 @@ app.put('/todos/:id', function(req, res) {
 	res.json(matchedTodo);
 
 });
-
 db.sequelize.sync().then(function() {
 	app.listen(PORT, function() {
 		console.log('Epxress listening on port' + PORT);
