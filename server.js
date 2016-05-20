@@ -3,11 +3,14 @@ var bodyParser = require('body-parser');
 var _ = require('underscore');
 var db = require('./db.js');
 var bcrypt = require('bcrypt');
+var middleware = require('./middleware')(db);
 
 var app = express();
 var PORT = process.env.PORT || 3000;
 var todos = [];
 var todoNextId = 1;
+
+
 
 app.use(bodyParser.json());
 
@@ -16,7 +19,7 @@ app.get('/', function(req, res) {
 });
 
 // GET /todos?completed=true&q=house
-app.get('/todos', function(req, res) {
+app.get('/todos', middleware.requireAuthentication, function(req, res) {
 	var query = req.query; // stores the data queried by the user after the "?"" in the URL
 	var where = {};
 
@@ -44,7 +47,7 @@ app.get('/todos', function(req, res) {
 
 
 // GET /todos/:id
-app.get('/todos/:id', function(req, res) {
+app.get('/todos/:id', middleware.requireAuthentication, function(req, res) {
 	var todoId = parseInt(req.params.id, 10); // req.params contains route parameters in the path part of the URL
 	db.todo.findById(todoId).then(function(todo) {
 		if (!!todo) {
@@ -58,7 +61,7 @@ app.get('/todos/:id', function(req, res) {
 });
 
 // POST /todos
-app.post('/todos', function(req, res) {
+app.post('/todos', middleware.requireAuthentication, function(req, res) {
 	// _.pick(object, attribute, ... ) removes everything from the object except the attributes listed
 	var body = _.pick(req.body, 'description', 'completed');
 	db.todo.create(body).then(function(todo) {
@@ -79,7 +82,7 @@ app.post('/todos', function(req, res) {
 
 // DELETE /todos/:is
 
-app.delete('/todos/:id', function(req, res) {
+app.delete('/todos/:id', middleware.requireAuthentication, function(req, res) {
 	var todoId = parseInt(req.params.id, 10);
 
 	db.todo.destroy({
@@ -140,19 +143,27 @@ app.post('/users', function(req, res) {
 })
 
 // POST /user/login
-app.post('/users/login', function (req, res) {
+app.post('/users/login', function(req, res) {
 	var body = _.pick(req.body, 'email', 'password');
 	// authenticate is defined in user.js as classModel, this is no built-in method
 	db.user.authenticate(body).then(function(user) {
-		res.json(user.toPublicJSON());
-	}, function(){
+		var token = user.generateToken('authentication');
+
+		if (token) {
+			res.header('Auth', token).json(user.toPublicJSON());
+		} else {
+			res.status(401).send();
+		}
+	}, function() {
 		res.status(401).send();
 	});
 
 });
 
 
-db.sequelize.sync({force: true}).then(function() {
+db.sequelize.sync({
+	force: true
+}).then(function() {
 	app.listen(PORT, function() {
 		console.log('Epxress listening on port' + PORT);
 	});
